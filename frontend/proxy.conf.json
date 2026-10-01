@@ -1,0 +1,6 @@
+{
+  "/chat": { "target": "http://127.0.0.1:8000", "secure": false },
+  "/hubs": { "target": "http://127.0.0.1:8000", "secure": false },
+  "/risk": { "target": "http://127.0.0.1:8000", "secure": false },
+  "/health": { "target": "http://127.0.0.1:8000", "secure": false }
+}

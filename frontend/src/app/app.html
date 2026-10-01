@@ -1,0 +1,73 @@
+<header class="topbar">
+  <button mat-icon-button class="on-dark" (click)="hubsOpen.set(!hubsOpen())"
+          [matTooltip]="hubsOpen() ? 'Hide side panel' : 'Show side panel'" aria-label="Toggle conversations and hubs">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <div class="brand">
+    <mat-icon>thunderstorm</mat-icon>
+    <span class="name">Weather Risk Intelligence</span>
+    <span class="tag">Hub exposure assistant</span>
+  </div>
+  <span class="spacer"></span>
+  <button mat-button class="on-dark" (click)="exportChat()" [disabled]="!store.hasConversation()">
+    <mat-icon>download</mat-icon> Export
+  </button>
+  <button mat-button class="on-dark" (click)="newChat()" [disabled]="!store.hasConversation() || store.busy()">
+    <mat-icon>add_comment</mat-icon> New chat
+  </button>
+  <button mat-icon-button class="on-dark" (click)="openExplainer()" matTooltip="How scores work"
+          aria-label="How scores work">
+    <mat-icon>info</mat-icon>
+  </button>
+</header>
+
+<div class="pane-switch" role="tablist">
+  <button role="tab" [class.active]="pane() === 'chat'" [attr.aria-selected]="pane() === 'chat'"
+          (click)="pane.set('chat')">Conversation</button>
+  <button role="tab" [class.active]="pane() === 'evidence'" [attr.aria-selected]="pane() === 'evidence'"
+          (click)="pane.set('evidence')">Evidence</button>
+</div>
+
+<main class="layout" [class.hubs-hidden]="!hubsOpen()">
+  @if (hubsOpen()) {
+    <aside class="hubs">
+      <app-conversation-list [sessions]="store.conversations()" [currentId]="store.sessionId()"
+                             [disabled]="store.busy()" (open)="openConversation($event)" />
+      <app-hub-panel [hubs]="store.hubs()" [disabled]="store.busy()" (analyze)="analyzeHub($event)" />
+    </aside>
+  }
+
+  <section class="chat" [class.hidden-narrow]="pane() !== 'chat'" aria-label="Conversation">
+    <div class="scroller" #scroller>
+      @if (store.opening() && !store.hasConversation()) {
+        <div class="opening">Opening conversation…</div>
+      } @else if (!store.hasConversation()) {
+        <app-welcome [hubs]="store.hubs()" (ask)="ask($event)" />
+      } @else {
+        <div class="messages">
+          @for (m of store.messages(); track m.id; let i = $index) {
+            <app-chat-message
+              [message]="m"
+              [names]="store.hubNames()"
+              [selected]="store.selectedAnswer()?.id === m.id"
+              [showFollowUps]="isLastAgent(i) && !store.loading()"
+              [retryable]="!store.busy()"
+              (select)="store.select($event); pane.set('evidence')"
+              (ask)="ask($event)"
+              (retry)="store.retry($event)" />
+          }
+          @if (store.loading()) {
+            <app-thinking-bubble />
+          }
+        </div>
+      }
+    </div>
+    <div class="composer-wrap">
+      <app-composer [disabled]="store.busy()" (send)="ask($event)" />
+    </div>
+  </section>
+
+  <aside class="insights" [class.hidden-narrow]="pane() !== 'evidence'" aria-label="Evidence">
+    <app-insight-panel [message]="store.selectedAnswer()" [names]="store.hubNames()" />
+  </aside>
+</main>

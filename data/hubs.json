@@ -1,0 +1,10 @@
+{
+  "hubs": [
+    { "id": "dallas", "name": "Dallas", "state": "TX", "region": "south", "location": { "latitude": 32.7767, "longitude": -96.7970 } },
+    { "id": "houston", "name": "Houston", "state": "TX", "region": "south", "location": { "latitude": 29.7604, "longitude": -95.3698 } },
+    { "id": "miami", "name": "Miami", "state": "FL", "region": "south", "location": { "latitude": 25.7617, "longitude": -80.1918 } },
+    { "id": "denver", "name": "Denver", "state": "CO", "region": "west", "location": { "latitude": 39.7392, "longitude": -104.9903 } },
+    { "id": "chicago", "name": "Chicago", "state": "IL", "region": "midwest", "location": { "latitude": 41.8781, "longitude": -87.6298 } },
+    { "id": "minneapolis", "name": "Minneapolis", "state": "MN", "region": "midwest", "location": { "latitude": 44.9778, "longitude": -93.2650 } }
+  ]
+}

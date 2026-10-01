@@ -1,0 +1,24 @@
+# Secrets and local configuration
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.idea/
+.vscode/
+
+# Runtime data: saved chat conversations (created automatically on first run)
+data/weather_risk.db
+data/*.db-journal
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+frontend/.angular/

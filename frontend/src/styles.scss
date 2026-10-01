@@ -1,0 +1,77 @@
+@use '@angular/material' as mat;
+
+// Brand tokens used by every component (light, enterprise logistics look).
+:root {
+  --wr-brand: #0b2545;
+  --wr-brand-2: #13315c;
+  --wr-ink: #0f1b2d;
+  --wr-text: #2a3646;
+  --wr-muted: #64748b;
+  --wr-line: #e2e8f0;
+  --wr-track: #edf1f6;
+  --wr-subtle: #f3f6fa;
+  --wr-canvas: #f6f8fb;
+  --wr-font: Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --wr-mono: 'Roboto Mono', ui-monospace, monospace;
+}
+
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$blue-palette,
+        tertiary: mat.$cyan-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+  // Navy brand for Material buttons and focus indicators.
+  @include mat.button-overrides(
+    (
+      filled-container-color: var(--wr-brand),
+      filled-label-text-color: #fff,
+      outlined-label-text-color: var(--wr-brand),
+    )
+  );
+}
+
+// Expansion panels: flat, bordered and compact to match the cards.
+.mat-expansion-panel {
+  --mat-expansion-header-text-size: 13px;
+  --mat-expansion-header-text-weight: 500;
+  --mat-expansion-header-collapsed-state-height: 44px;
+  --mat-expansion-header-expanded-state-height: 48px;
+  --mat-expansion-container-text-size: 13px;
+  --mat-expansion-container-shape: 8px;
+  --mat-expansion-container-background-color: #fff;
+  box-shadow: none !important;
+  border: 1px solid var(--wr-line);
+}
+.mat-accordion .mat-expansion-panel { margin-bottom: 6px; }
+
+body {
+  color-scheme: light;
+  background: var(--wr-canvas);
+  color: var(--wr-text);
+  font: 14px/1.5 var(--wr-font);
+  margin: 0;
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Agent answers are rendered Markdown.
+.answer {
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 4px 0 8px; padding-left: 20px; }
+  li { margin: 2px 0; }
+  h1, h2, h3, h4 { font-size: 14px; margin: 10px 0 4px; color: var(--wr-ink); }
+  strong { color: var(--wr-ink); }
+  table { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
+  th, td { border: 1px solid var(--wr-line); padding: 4px 8px; text-align: left; }
+  code { font-family: var(--wr-mono); font-size: 12px; background: var(--wr-subtle); padding: 1px 4px; border-radius: 4px; }
+}
