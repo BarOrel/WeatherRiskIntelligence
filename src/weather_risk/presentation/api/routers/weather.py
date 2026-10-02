@@ -4,10 +4,13 @@ from fastapi import APIRouter
 
 from weather_risk.application.use_cases import GetWeatherMetricsRequest
 from weather_risk.presentation.api.dependencies import GetWeatherMetricsDep, WeatherServiceDep
+from weather_risk.presentation.api.errors import error_responses
 from weather_risk.presentation.api.risk_schemas import WeatherMetricsResponse
 from weather_risk.presentation.api.schemas import WeatherHistoryResponse
 
-router = APIRouter(prefix="/hubs", tags=["weather"])
+router = APIRouter(
+    prefix="/hubs", tags=["weather"], responses=error_responses(404, 422, 500, 502, 503, 504)
+)
 
 
 @router.get("/{hub_id}/weather/history", response_model=WeatherHistoryResponse)

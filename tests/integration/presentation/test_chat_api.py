@@ -164,7 +164,13 @@ def test_blank_answer_then_retry_with_same_turn_id_keeps_one_turn(
     client.post("/chat", json={"session_id": "s1", "turn_id": "t2", "message": "and?"})
 
     assert failed.status_code == 502
-    assert failed.json() == {"detail": "The language model returned no text"}
+    assert failed.json() == {
+        "type": "about:blank",
+        "title": "Bad Gateway",
+        "status": 502,
+        "detail": "The language model returned no text",
+        "code": "llm_bad_response",
+    }
     assert retried.status_code == 200
     assert llm.calls[4].transcript == "user: hi\nassistant: Hello!\nuser: and?"
 

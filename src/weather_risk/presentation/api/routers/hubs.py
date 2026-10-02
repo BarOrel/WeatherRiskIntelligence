@@ -2,9 +2,10 @@ from fastapi import APIRouter, Response
 
 from weather_risk.domain.models import Region
 from weather_risk.presentation.api.dependencies import HubServiceDep
+from weather_risk.presentation.api.errors import error_responses
 from weather_risk.presentation.api.schemas import HubResponse
 
-router = APIRouter(prefix="/hubs", tags=["hubs"])
+router = APIRouter(prefix="/hubs", tags=["hubs"], responses=error_responses(422, 500))
 
 # hubs.json is the live source of truth; browsers must always ask the API again.
 NO_STORE = "no-store"
@@ -18,7 +19,7 @@ def list_hubs(
     return [HubResponse.from_domain(hub) for hub in service.list_hubs(region)]
 
 
-@router.get("/{hub_id}", response_model=HubResponse)
+@router.get("/{hub_id}", response_model=HubResponse, responses=error_responses(404))
 def get_hub(hub_id: str, service: HubServiceDep, response: Response) -> HubResponse:
     response.headers["Cache-Control"] = NO_STORE
     return HubResponse.from_domain(service.get_hub(hub_id))

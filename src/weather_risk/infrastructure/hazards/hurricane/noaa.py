@@ -24,6 +24,7 @@ from weather_risk.domain.models import (
     GeoLocation,
     HazardDataSource,
     HurricaneHazardData,
+    TropicalCycloneEvent,
     WeatherDateRange,
 )
 from weather_risk.infrastructure.cache import CacheProvider, cached, location_range_key
@@ -115,13 +116,14 @@ class NoaaHurricaneHazardProvider(HurricaneHazardProvider):
             limitations=limitations,
             search_radius_km=radius_km,
             data_coverage_end=dataset.coverage_end,
-            events=tuple(find_events(dataset.storms, location, date_range, radius_km)),
+            events=await asyncio.to_thread(_find, dataset.storms, location, date_range, radius_km),
         )
 
     @cached(namespace=DATASET_CACHE_NAMESPACE, ttl=lambda self: self._config.dataset_ttl_seconds)
     async def _load_dataset(self, urls: tuple[str, ...]) -> BestTrackDataset:
         texts = await asyncio.gather(*(self._download(url) for url in urls))
-        files = [parse_hurdat2(text) for text in texts]
+        # Parsing ~10 MB of best-track text is CPU-bound: keep it off the event loop.
+        files = await asyncio.to_thread(lambda: [parse_hurdat2(text) for text in texts])
         ends = [max(storm.end_date for storm in storms) for storms in files if storms]
         return BestTrackDataset(
             storms=tuple(storm for storms in files for storm in storms),
@@ -139,3 +141,13 @@ class NoaaHurricaneHazardProvider(HurricaneHazardProvider):
             sleep=self._sleep,
         )
         return response.text
+
+
+def _find(
+    storms: tuple[BestTrackStorm, ...],
+    location: GeoLocation,
+    date_range: WeatherDateRange,
+    radius_km: float,
+) -> tuple[TropicalCycloneEvent, ...]:
+    """CPU-bound proximity search over every track point; run in a worker thread."""
+    return tuple(find_events(storms, location, date_range, radius_km))

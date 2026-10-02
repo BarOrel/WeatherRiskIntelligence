@@ -2,7 +2,7 @@ import datetime as dt
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Path, Query, Response
+from fastapi import APIRouter, Path, Query, Response
 from pydantic import BaseModel, Field
 
 from weather_risk.agents.core import (
@@ -13,8 +13,9 @@ from weather_risk.agents.core import (
     SessionSummary,
 )
 from weather_risk.presentation.api.dependencies import ChatRuntimeDep
+from weather_risk.presentation.api.errors import ApiError, error_responses
 
-router = APIRouter(tags=["chat"])
+router = APIRouter(tags=["chat"], responses=error_responses(422, 500))
 
 MAX_MESSAGE_CHARS = 4000
 SESSION_ID_PATTERN = r"^[A-Za-z0-9_\-]+$"
@@ -35,7 +36,7 @@ class ChatRequest(BaseModel):
         default=None,
         min_length=1,
         max_length=100,
-        pattern=r"^[A-Za-z0-9_\-]+$",
+        pattern=SESSION_ID_PATTERN,
         description="Client id for this question; send the same id when retrying it so the "
         "turn is replaced, never duplicated",
     )
@@ -97,7 +98,7 @@ class ChatResponse(BaseModel):
         )
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, responses=error_responses(502, 503, 504))
 async def chat(request: ChatRequest, runtime: ChatRuntimeDep) -> ChatResponse:
     session_id = request.session_id or uuid.uuid4().hex
     response = await runtime.run(session_id, request.message.strip(), request.turn_id)
@@ -162,7 +163,11 @@ async def list_sessions(
     return [SessionSummaryResponse.from_domain(s) for s in await runtime.sessions(limit)]
 
 
-@router.get("/chat/sessions/{session_id}", response_model=ConversationResponse)
+@router.get(
+    "/chat/sessions/{session_id}",
+    response_model=ConversationResponse,
+    responses=error_responses(404),
+)
 async def get_session(
     runtime: ChatRuntimeDep,
     response: Response,
@@ -171,7 +176,7 @@ async def get_session(
     """A stored conversation with every turn's answer, trace, warnings and results."""
     turns = await runtime.conversation(session_id)
     if not turns:
-        raise HTTPException(status_code=404, detail=f"Unknown session '{session_id}'")
+        raise ApiError(404, "session_not_found", f"Unknown session '{session_id}'")
     response.headers["Cache-Control"] = NO_STORE
     return ConversationResponse(
         session_id=session_id, turns=[TurnResponse.from_domain(t) for t in turns]

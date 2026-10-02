@@ -43,7 +43,7 @@ def client(seed_hubs_file: Path, fx: Fixture) -> Iterator[TestClient]:
 
 class TestHubRisk:
     def test_full_assessment_with_evidence(self, client: TestClient) -> None:
-        response = client.get("/hubs/denver/risk", params=DATES | {"hazards": "winter,heat"})
+        response = client.get("/hubs/denver/risk", params=DATES | {"hazards": ["winter", "heat"]})
 
         assert response.status_code == 200
         body = response.json()
@@ -109,7 +109,7 @@ class TestRanking:
         assert set(body["rankings"][0]["hazard_scores"]) == {"winter"}
 
     def test_explicit_hubs(self, client: TestClient) -> None:
-        body = client.get("/risk/rank", params=DATES | {"hubs": "miami, denver"}).json()
+        body = client.get("/risk/rank", params=DATES | {"hubs": ["miami", " Denver "]}).json()
 
         assert {r["hub_id"] for r in body["rankings"]} == {"miami", "denver"}
 
@@ -120,7 +120,7 @@ class TestRanking:
 class TestComparison:
     def test_compare_two_hubs(self, client: TestClient) -> None:
         response = client.get(
-            "/risk/compare", params=DATES | {"hubs": "miami,denver", "hazards": "hurricane,flood"}
+            "/risk/compare", params=DATES | {"hubs": ["miami", "denver"], "hazards": ["hurricane", "flood"]}
         )
 
         assert response.status_code == 200
@@ -133,8 +133,8 @@ class TestComparison:
         )
         assert len(body["assessments"]) == 2
 
-    @pytest.mark.parametrize("hubs", ["miami", "miami,miami"])
-    def test_needs_two_distinct_hubs(self, client: TestClient, hubs: str) -> None:
+    @pytest.mark.parametrize("hubs", [["miami"], ["miami", "miami"]])
+    def test_needs_two_distinct_hubs(self, client: TestClient, hubs: list[str]) -> None:
         assert client.get("/risk/compare", params=DATES | {"hubs": hubs}).status_code == 422
 
 

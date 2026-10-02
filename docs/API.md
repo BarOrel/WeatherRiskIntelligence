@@ -10,13 +10,13 @@ Interactive documentation (Swagger UI) is served at `/docs` when the API runs.
 | `GET /hubs/{hub_id}/weather/history?start_date=…&end_date=…` | Daily historical weather |
 | `GET /hubs/{hub_id}/hazards/{flood\|hurricane}?start_date=…&end_date=…` | Hazard data (no scoring) |
 | `GET /hubs/{hub_id}/weather/metrics?start_date=…&end_date=…` | Factual weather statistics (e.g. % of snowfall days) |
-| `GET /hubs/{hub_id}/risk?start_date=…&end_date=…&hazards=winter,flood` | Risk assessment with full evidence |
-| `GET /risk/rank?start_date=…&end_date=…&region=midwest&hazards=winter` | Rank hubs (optional `region`, `hubs=a,b`) |
-| `GET /risk/compare?hubs=miami,houston&start_date=…&end_date=…&hazards=hurricane,flood` | Compare hubs |
+| `GET /hubs/{hub_id}/risk?start_date=…&end_date=…&hazards=winter&hazards=flood` | Risk assessment with full evidence |
+| `GET /risk/rank?start_date=…&end_date=…&region=midwest&hazards=winter` | Rank hubs (optional `region`, repeated `hubs`) |
+| `GET /risk/compare?hubs=miami&hubs=houston&start_date=…&end_date=…&hazards=hurricane&hazards=flood` | Compare hubs |
 | `POST /chat` `{"message": "…", "session_id"?: "…", "turn_id"?: "…"}` | Conversational agent (needs an LLM API key; see [Chat](#chat)) |
 
-Dates are `YYYY-MM-DD`. `hazards` is any of `winter`, `flood`, `hurricane`, `heat`; omit it for
-all four.
+Dates are `YYYY-MM-DD`. List parameters are repeated, not comma-separated: `hazards` takes any of
+`winter`, `flood`, `hurricane`, `heat` (omit it for all four), and `hubs` takes hub ids.
 
 ## Weather example
 
@@ -101,15 +101,34 @@ curl "http://127.0.0.1:8000/hubs/miami/hazards/hurricane?start_date=2015-01-01&e
 
 ## Errors
 
-| Status | Meaning |
-|--------|---------|
-| 404 | Unknown hub |
-| 422 | Missing/malformed dates, `start_date > end_date`, future dates, range too long, unknown hazard name, fewer than two hubs to compare, selection with zero configured weight |
-| 502 / 503 / 504 (`/chat`) | LLM refused or returned no valid plan / LLM unavailable or not configured / LLM timed out |
-| 501 | No hazard dataset for that type (`/hazards/winter` and `/hazards/heat`: these are derived from weather) |
-| 502 | Provider returned an unexpected HTTP status or invalid/incomplete data |
-| 503 | Provider unreachable (network error) |
-| 504 | Provider timed out |
+Every error uses one format, [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details
+(`Content-Type: application/problem+json`). Branch on `code`, not on the text:
+
+```json
+{"type": "about:blank", "title": "Not Found", "status": 404,
+ "detail": "Unknown hub 'atlantis'", "code": "hub_not_found"}
+```
+
+Validation errors add `errors`: a list of `{loc, msg, type}` (the submitted value is never echoed).
+Upstream and unexpected failures return a generic `detail`; the cause is logged on the server.
+
+| Status | `code` | Meaning |
+|---|---|---|
+| 404 | `hub_not_found`, `session_not_found`, `not_found` | Unknown hub, unknown saved conversation, unknown route |
+| 405 | `method_not_allowed` | Wrong HTTP method |
+| 422 | `validation_error` | Malformed or missing parameters (dates, unknown hazard or region, missing `hubs`) |
+| 422 | `invalid_date_range` | `start_date > end_date`, future dates, range too long |
+| 422 | `invalid_risk_request` | Fewer than two distinct hubs to compare, selection with zero configured weight |
+| 501 | `hazard_data_unsupported` | No hazard dataset for that type (`winter` and `heat` are derived from weather) |
+| 502 | `weather_provider_bad_response`, `weather_provider_invalid_data`, `hazard_provider_bad_response`, `hazard_provider_invalid_data` | A data provider returned an unexpected status or invalid data |
+| 503 | `weather_provider_unavailable`, `hazard_provider_unavailable` | A data provider is unreachable |
+| 504 | `weather_provider_timeout`, `hazard_provider_timeout` | A data provider timed out |
+| 502 | `llm_bad_response`, `llm_invalid_plan` | The LLM refused, returned no text after retries, or no valid plan after repairs |
+| 503 | `llm_unavailable` | No LLM configured, credentials rejected, rate limited or out of quota |
+| 504 | `llm_timeout` | The LLM timed out |
+| 500 | `internal_error` | Unexpected server error |
+
+Every route documents its possible errors in Swagger UI (`/docs`).
 
 ## Chat
 
@@ -151,5 +170,5 @@ curl -X POST http://127.0.0.1:8000/chat -H "Content-Type: application/json" \
 
 Both are sent with `Cache-Control: no-store`.
 
-Chat errors: 503 LLM unavailable or not configured, 504 LLM timeout, 502 LLM refused, returned no
-text after retries, or returned no valid plan after repairs.
+Chat errors use the same format (see [Errors](#errors)): `llm_unavailable` (503), `llm_timeout`
+(504), `llm_bad_response` / `llm_invalid_plan` (502).

@@ -173,3 +173,33 @@ class TestCaching:
         data = await provider.get_data(MIAMI, AUGUST_2020)
 
         assert [e.name for e in data.events] == ["ALPHA"]
+
+
+async def test_parsing_and_search_run_off_the_event_loop(
+    make_provider: MakeProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CPU-bound work runs in a worker thread so other requests are not blocked."""
+    import threading
+
+    from weather_risk.infrastructure.hazards.hurricane import noaa
+
+    loop_thread = threading.current_thread()
+    threads: dict[str, threading.Thread] = {}
+    real_parse, real_find = noaa.parse_hurdat2, noaa.find_events
+
+    def parse(text: str) -> Any:
+        threads["parse"] = threading.current_thread()
+        return real_parse(text)
+
+    def find(*args: Any) -> Any:
+        threads["search"] = threading.current_thread()
+        return real_find(*args)
+
+    monkeypatch.setattr(noaa, "parse_hurdat2", parse)
+    monkeypatch.setattr(noaa, "find_events", find)
+
+    data = await make_provider(Router(ok_routes())).get_data(MIAMI, AUGUST_2020)
+
+    assert isinstance(data, HurricaneHazardData)
+    assert set(threads) == {"parse", "search"}
+    assert all(thread is not loop_thread for thread in threads.values())
